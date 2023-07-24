@@ -1,0 +1,62 @@
+USE revenue ;
+drop table revenue.revenue_analysis ;
+create table if not exists revenue.revenue_analysis(
+  Region VARCHAR(20) NULL,
+  Country VARCHAR(45) NULL,
+  Sales_Reps VARCHAR(45),
+  First_Name VARCHAR(45) NOT NULL,
+  Last_Name VARCHAR(45) NOT NULL,
+  Gender VARCHAR(45) NULL,
+  Age INT NULL,
+  Rank_Levels VARCHAR(45) NULL,
+  Stores VARCHAR(45) NULL,
+  Products VARCHAR(45) NULL,
+  Years YEAR NULL,
+  N_Months varchar(25) NULL,
+  Revenue DECIMAL NULL,
+  Months varchar(45)) ; 
+  
+  -- Total Revenue per each store
+select * from revenue.revenue_analysis;
+select  STR_TO_DATE(CONCAT(Months,'01'),'%Y%m%d') as Months
+from revenue_analysis; 
+select stores , sum(Revenue) as total_revenue , 
+round(( sum(Revenue)/(select sum(Revenue) from revenue.revenue_analysis)) ,2)  as percentage_of_each_store
+from revenue.revenue_analysis
+group by Stores
+order by round(( sum(Revenue)/(select sum(Revenue) from revenue.revenue_analysis)) ,2) desc; 
+---------------------------------------
+-- revenue growth per month  
+select STR_TO_DATE(CONCAT(Months,'01'),'%Y%m%d') as Months , sum(Revenue) as Revenue ,
+ (sum(Revenue)-lag(sum(Revenue))over(order by STR_TO_DATE(CONCAT(Months,'01'),'%Y%m%d') asc)) as Revenue_Growth ,
+ (sum(Revenue)-lag(sum(Revenue))over(order by STR_TO_DATE(CONCAT(Months,'01'),'%Y%m%d') asc) /lag(sum(Revenue))over
+ (order by STR_TO_DATE(CONCAT(Months,'01'),'%Y%m%d') asc) )*100 as Revenue_percentage_Growth    ,
+ lead(sum(Revenue))over(order by STR_TO_DATE(CONCAT(Months,'01'),'%Y%m%d') asc) as next_year_growth ,
+ (SELECT count(Gender) from revenue_analysis where Gender='Female') as Female_contribution, 
+(SELECT count(Gender) from revenue_analysis where Gender='Male') as Male_contribution 
+from revenue_analysis
+where Region = 'U.S.A.' 
+group by STR_TO_DATE(CONCAT(Months,'01'),'%Y%m%d') ;
+-------------------------------------------- 
+--  Top 3 product on each Region 
+select Region , Country , Products ,count(Products) as N_Products, row_number() over (partition by Region order by Country) as Rank_Product
+from revenue_analysis
+group by Region , Country , Products
+order by Count(Products) ; 
+--------------------------------------------
+-- Revenue for each product per month 
+select N_Months , Products , (count(case when Gender = 'Male' Then 1 end ) /count(Gender)) as Male_Con,
+((select sum(Revenue) from revenue_analysis where Gender='Male')/sum(Revenue)) as REV_Male ,
+(count(case when Gender = 'Female' Then 1 end ) /count(Gender)) as Female_Con,
+((select sum(Revenue) from revenue_analysis where Gender='Female')/sum(Revenue)) as REV_Female  
+from revenue_analysis
+group by N_Months ,Products 
+order by N_Months;
+-------------------------------------------- 
+-- Revenue per Gender 
+select Region , Country , products , Sales_Reps , Gender , Age , sum(Revenue) as Revenue  
+from revenue_analysis
+group by Region,Country , Products ,Sales_Reps , Gender , Age  
+order by sum(Revenue)
+limit 3;
+-----------------------------------------------------------
